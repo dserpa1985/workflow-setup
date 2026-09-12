@@ -1,0 +1,112 @@
+name: Run Setup Script
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'setup.sh'
+      - '.github/workflows/run-setup.yml'
+  workflow_dispatch:
+
+jobs:
+  run-setup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    permissions:
+      contents: read
+      actions: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Validate setup.sh exists
+        id: validate
+        run: |
+          if [ ! -f setup.sh ]; then
+            echo "ERROR: setup.sh not found!"
+            exit 1
+          fi
+          echo "✓ setup.sh found and ready to execute"
+          ls -lah setup.sh
+
+      - name: Make setup.sh executable
+        run: chmod +x setup.sh
+
+      - name: Display setup.sh content (first 50 lines)
+        run: head -50 setup.sh || echo "setup.sh is empty or unreadable"
+
+      - name: Run setup script
+        id: setup
+        run: |
+          set -e  # Exit on error
+          set -x  # Print commands being executed
+          ./setup.sh 2>&1 | tee setup-output.log
+        env:
+          CI: true
+          GITHUB_ACTIONS: true
+        continue-on-error: true
+
+      - name: Check setup exit status
+        if: steps.setup.outcome == 'failure'
+        run: |
+          echo "⚠ Setup script failed with exit code: ${{ steps.setup.outcome }}"
+          echo "Review the logs above for details"
+          exit 1
+
+      - name: Capture setup output
+        if: always()
+        run: |
+          if [ -f setup-output.log ]; then
+            echo "=== Setup Script Output ==="
+            cat setup-output.log
+          fi
+
+      - name: Upload logs and artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: setup-logs-${{ github.run_id }}
+          path: |
+            setup-output.log
+            *.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Generate summary report
+        if: always()
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## Setup Script Execution Report
+          
+          **Workflow Run:** [${{ github.run_id }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+          
+          **Branch:** ${{ github.ref_name }}
+          
+          **Commit:** ${{ github.sha }}
+          
+          **Status:** ${{ job.status }}
+          
+          **Timestamp:** $(date -u +'%Y-%m-%d %H:%M:%S UTC')
+          
+          ### Next Steps:
+          - Review the setup output in the logs
+          - Check uploaded artifacts for detailed logs
+          - For failures, examine setup.sh for errors
+          EOF
+
+      - name: Notify on success
+        if: success()
+        run: echo "✓ Setup script completed successfully on ${{ github.ref_name }}"
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "✗ Setup script failed on ${{ github.ref_name }}"
+          echo "::error::Setup script execution failed"
+          exit 1
