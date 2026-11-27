@@ -9,12 +9,7 @@ echo "NPM version: $(npm -v)"
 
 npm ci
 
-for entry in server.js index.js app.js src/*.js; do
-  if [ -f "$entry" ]; then
-    echo "Checking syntax for $entry..."
-    node --check "$entry"
-  fi
-done
+find . -maxdepth 3 -name "*.js" -not -path "./node_modules/*" -exec node --check {} +
 
 npm test --if-present
 

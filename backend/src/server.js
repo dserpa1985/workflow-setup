@@ -3,6 +3,8 @@ const cors = require('cors');
 const helmet = require('helmet');
 require('dotenv').config();
 
+const authRoutes = require('./routes/auth');
+
 const app = express();
 
 app.use(helmet());
@@ -21,6 +23,8 @@ app.get('/health', (req, res) => {
     status: 'ok'
   });
 });
+
+app.use('/api/auth', authRoutes);
 
 const HOST = process.env.HOST || '127.0.0.1';
 const PORT = process.env.PORT || 3000;
