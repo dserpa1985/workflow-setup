@@ -1,6 +1,3 @@
-const { Pool } = require('pg
-
-cat > ~/marketplace/backend/src/db.js <<'EOF'
 const { Pool } = require('pg');
 require('dotenv').config();
 
