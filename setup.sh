@@ -9,7 +9,7 @@ echo "NPM version: $(npm -v)"
 
 npm ci
 
-for entry in server.js index.js app.js src/server.js src/index.js src/app.js; do
+for entry in server.js index.js app.js src/*.js; do
   if [ -f "$entry" ]; then
     echo "Checking syntax for $entry..."
     node --check "$entry"
